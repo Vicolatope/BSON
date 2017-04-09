@@ -1,15 +1,15 @@
 #include "BSON.class.hpp"
 #include <iostream>
 #include <fstream>
-#include "BSON_element.class.hpp"
 
 void BSON::handle_double(char_vec_t bson_data, int& current_index) {
 	double *p_double;
 
 	std::cout << bson_data.data() + current_index << std::endl;
 	current_index += strlen(bson_data.data() + current_index) + 1;
-
 	p_double = reinterpret_cast<double *>(bson_data.data() + current_index);
+
+	BSON_element new_elem(p_double, bson_data.data() - strlen(bson_data.data() + current_index) + 1, 8, BSON_DOUBLE_T);
 	current_index += sizeof(double);
 	std::cout << *p_double << std::endl;
 
