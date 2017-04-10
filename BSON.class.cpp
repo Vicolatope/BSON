@@ -2,42 +2,53 @@
 #include <iostream>
 #include <fstream>
 
-void BSON::handle_double(char_vec_t bson_data, int& current_index) {
+bs_element_t *BSON::handle_double(char_vec_t bson_data, int& current_index) {
 	double *p_double;
+	bs_element_t	*new_element;
+	char			*p_name;
 
 	std::cout << bson_data.data() + current_index << std::endl;
+	p_name = bson_data.data() + current_index;
 	current_index += strlen(bson_data.data() + current_index) + 1;
 	p_double = reinterpret_cast<double *>(bson_data.data() + current_index);
 
-	BSON_element new_elem(p_double, bson_data.data() - strlen(bson_data.data() + current_index) + 1, 8, BSON_DOUBLE_T);
+	new_element = new BSON_element(p_double, p_name, sizeof(double), BSON_DOUBLE_T);
 	current_index += sizeof(double);
 	std::cout << *p_double << std::endl;
-
+	return new_element;
 }
 
-void BSON::handle_object_id(char_vec_t bson_data, int& current_index) {
+bs_element_t *BSON::handle_object_id(char_vec_t bson_data, int& current_index) {
 	unsigned char	object_id[12];
+	bs_element_t	*new_element;
+	char			*p_name;
 	int		i;
 
 	std::cout << bson_data.data() + current_index << std::endl;
+	p_name = bson_data.data() + current_index;
 	current_index += strlen(bson_data.data() + current_index) + 1;
 	for (i = 0; i < 12; i++) {
 		object_id[i] = bson_data[current_index + i];
 		printf("%02x", object_id[i]);
 	}
+	new_element = new BSON_element(&object_id[0], p_name, 12, BSON_OID_T);
 	current_index += i;
 	std::cout << std::endl;
+	return new_element;
 }
 
-void BSON::element_dispatcher(char_vec_t bson_data, int32_t element_size, int current_index) {
+
+void BSON::element_dispatcher(char_vec_t bson_data, int32_t doc_size, int current_index) {
+	bs_document_t *new_document = this->new_document();
 	int &i = current_index;
-	while (i - current_index < element_size) {
+	while (i - current_index < doc_size) {
 		switch (bson_data[i]) {
 			case 0x00:
+				this->add_document_to_list(new_document);
 				return;
 			case BSON_DOUBLE_T:
 				i++;
-				this->handle_double(bson_data, i);
+				this->add_element_to_list(&new_document->element_list, this->new_element_list_item(this->handle_double(bson_data, i)));
 				break;
 			// case BSON_STRING_T:
 			// 	i++;
@@ -61,7 +72,7 @@ void BSON::element_dispatcher(char_vec_t bson_data, int32_t element_size, int cu
 			// 	break;
 			case BSON_OID_T:
 				i++;
-				this->handle_object_id(bson_data, i);
+				this->add_element_to_list(&new_document->element_list, this->new_element_list_item(this->handle_object_id(bson_data, i)));
 				break;
 			// case BSON_BOOL_T:
 			// 	i++;
@@ -130,13 +141,13 @@ void BSON::element_dispatcher(char_vec_t bson_data, int32_t element_size, int cu
 
 BSON::BSON(char_vec_t bson_data, int total_size) {
 	int i = 0;
-	int32_t		*p_elem_size;
+	int32_t		*p_doc_size;
 
 	while (i < total_size) {
-		p_elem_size = reinterpret_cast<int32_t *>(bson_data.data() + i);
-		this->element_dispatcher(bson_data, *p_elem_size, i + sizeof(int32_t));
-		i += *p_elem_size;
-		p_elem_size = NULL;
+		p_doc_size = reinterpret_cast<int32_t *>(bson_data.data() + i);
+		this->element_dispatcher(bson_data, *p_doc_size, i + sizeof(int32_t));
+		i += *p_doc_size;
+		p_doc_size = NULL;
 	}
 }
 
@@ -160,17 +171,108 @@ int main(int ac, char **av)
 			source.read(memblock.data(), size);
 			source.close();
 			BSON bson_parser(memblock, size);
+			bson_parser.json_dump();
 		}
 		else
 		{
-			std::cout << "There was an error opening the file" << std::endl;
+			std::cerr << "There was an error opening the file" << std::endl;
 			return 2;
 		}
 	}
 	else
 	{
-		std::cout << "usage: bsonreader [file]" << std::endl;
+		std::cerr << "usage: bsonreader [file]" << std::endl;
 		return 1;
 	}
 	return 0;
+}
+
+/*
+***	Fonctions propres a la liste de document : document_list, attribut de chaque bson,
+***	ou sont stockes les documents trouvés sur le buffer
+*/
+
+bs_document_t *BSON::new_document(void) {
+	bs_document_t	*new_document;
+
+	new_document = new bs_document_t;
+	new_document->element_list = NULL;
+	new_document->next_d = NULL;
+	return new_document;
+}
+
+
+void BSON::add_document_to_list(bs_document_t *new_document) {
+	bs_document_t	*tmp_document;
+
+	if (this->document_list) {
+		tmp_document = this->document_list;
+		while (tmp_document->next_d) {
+			tmp_document = tmp_document->next_d;
+		}
+		if (tmp_document && !tmp_document->next_d) {
+			tmp_document->next_d = new_document;
+		} else {
+			std::cerr << "There was a problem adding new doc to the list" << '\n';
+			return ;
+		}
+	} else {
+		this->document_list = new_document;
+	}
+}
+
+/*
+***	Methodes propres a l'initialisation et la manipulation de
+***	la liste d'element contenue dans chaque document.
+*/
+
+bs_list_elem_t	*BSON::new_element_list_item(bs_element_t *element) {
+	bs_list_elem_t *new_list_item;
+
+	new_list_item = new bs_list_elem_t;
+	new_list_item->next_e = NULL;
+	new_list_item->element = element;
+	return new_list_item;
+}
+
+void BSON::add_element_to_list(bs_list_elem_t **begin_list, bs_list_elem_t *new_elem) {
+	bs_list_elem_t	*tmp_element;
+
+	if (*begin_list == NULL) {
+		*begin_list = new_elem;
+	} else {
+		tmp_element = *begin_list;
+		while (tmp_element && tmp_element->next_e) {
+			tmp_element = tmp_element->next_e;
+		}
+		if (tmp_element && !tmp_element->next_e) {
+			tmp_element->next_e = new_elem;
+		}
+	}
+}
+
+/*
+*** return the json from the bson taken at initilization
+*/
+
+void BSON::json_dump(void) {
+	bs_document_t	*tmp_doc;
+	bs_list_elem_t	*tmp_elm_item;
+	bs_element_t	*tmp_elem;
+
+
+	tmp_doc = this->document_list;
+	while (tmp_doc) {
+		std::cout << "{";
+		tmp_elm_item = tmp_doc->element_list;
+		while (tmp_elm_item) {
+			tmp_elm_item->element->json_dump_element();
+			tmp_elm_item = tmp_elm_item->next_e;
+			if (tmp_elm_item) {
+				std::cout << ",";
+			}
+		}
+		std::cout << "}" << std::endl;
+		tmp_doc = tmp_doc->next_d;
+	}
 }
