@@ -1,5 +1,3 @@
-#include "BSON_document.class.hpp"
-#include "BSON_element.class.hpp"
 #include "bson.hpp"
 
 #define DATA_PTR(current_index) bson_data.data()+current_index
@@ -8,7 +6,6 @@ void BSON::interpret_string(int32_t **p_size, char **bs_string, char_vec_t bson_
 	*p_size = reinterpret_cast<int32_t *>(DATA_PTR(current_index));
 	current_index += sizeof(int32_t);
 	*bs_string = DATA_PTR(current_index);
-	std::cout << **p_size << " : " << DATA_PTR(current_index) << std::endl;
 	current_index += **p_size;
 }
 
@@ -18,7 +15,7 @@ void BSON::interpret_cstring(char **bs_string, char_vec_t bson_data, int& curren
 }
 
 /*
-**	methodes creant les BSON_element du type approprie
+***	=============== methodes creant les BSON_element approprie ===============
 */
 
 bs_element_t	*BSON::handle_embedded_document(char_vec_t bson_data, int& current_index) {
@@ -32,7 +29,7 @@ bs_element_t	*BSON::handle_embedded_document(char_vec_t bson_data, int& current_
 	current_index += sizeof(int32_t);
 	bs_document = this->element_dispatcher(bson_data, *doc_size, current_index);
 	current_index += *doc_size;
-	new_element = new BSON_element(bs_document, p_name, *doc_size, BSON_DOC_T);
+	new_element = new BSON_doc_elem(bs_document, p_name, *doc_size, BSON_DOC_T);
 	return new_element;
 }
 
@@ -48,25 +45,22 @@ bs_element_t	*BSON::handle_array(char_vec_t bson_data, int& current_index) {
 	current_index += sizeof(int32_t);
 	bs_document = this->element_dispatcher(bson_data, *doc_size, current_index);
 	current_index += *doc_size;
-	new_element = new BSON_element(bs_document, p_name, *doc_size, BSON_DOC_T);
+	new_element = new BSON_doc_elem(bs_document, p_name, *doc_size, BSON_DOC_T);
 	return new_element;
 }
 
 bs_element_t *BSON::handle_double(char_vec_t bson_data, int& current_index) {
 	double *p_double;
-	bs_element_t	*new_element;
+	BSON_double	*new_element;
 	char			*p_name;
 
-	// std::cout << DATA_PTR(current_index) << std::endl;
 	this->interpret_cstring(&p_name, bson_data, current_index);
 	p_double = reinterpret_cast<double *>(DATA_PTR(current_index));
 
-	new_element = new BSON_element(p_double, p_name, sizeof(double), BSON_DOUBLE_T);
+	new_element = new BSON_double(p_double, p_name, sizeof(double), BSON_DOUBLE_T);
 	current_index += sizeof(double);
-	// std::cout << *p_double << std::endl;
 	return new_element;
 }
-
 
 bs_element_t	*BSON::handle_string(char_vec_t bson_data, int& current_index,  bson_type_t type) {
 	char			*bs_string;
@@ -76,7 +70,7 @@ bs_element_t	*BSON::handle_string(char_vec_t bson_data, int& current_index,  bso
 
 	this->interpret_cstring(&p_name, bson_data, current_index);
 	this->interpret_string(&p_size, &bs_string, bson_data, current_index);
-	new_element = new BSON_element(bs_string, p_name, *p_size, type);
+	new_element = new BSON_string(bs_string, p_name, *p_size, type);
 	return new_element;
 }
 
@@ -93,7 +87,7 @@ bs_element_t	*BSON::handle_binary_data(char_vec_t bson_data, int& current_index)
 	p_subtype = reinterpret_cast<unsigned char *>(DATA_PTR(current_index));
 	current_index += 1;
 	bin_data = reinterpret_cast<unsigned char *>(DATA_PTR(current_index));
-	new_element = new BSON_element(*p_subtype, bin_data, p_name, *bin_size, BSON_BINARY_T);
+	new_element = new BSON_binary(*p_subtype, bin_data, p_name, *bin_size, BSON_BINARY_T);
 	current_index += *bin_size;
 	return new_element;
 }
@@ -103,7 +97,7 @@ bs_element_t	*BSON::handle_undefined(char_vec_t bson_data, int& current_index) {
 	bs_element_t	*new_element;
 
 	this->interpret_cstring(&p_name, bson_data, current_index);
-	new_element = new BSON_element(p_name, BSON_UNDEFINED_T);
+	new_element = new BSON_null(p_name, BSON_UNDEFINED_T);
 	return new_element;
 }
 
@@ -112,7 +106,7 @@ bs_element_t	*BSON::handle_null_value(char_vec_t bson_data, int& current_index) 
 	bs_element_t	*new_element;
 
 	this->interpret_cstring(&p_name, bson_data, current_index);
-	new_element = new BSON_element(p_name, BSON_NULL_T);
+	new_element = new BSON_null(p_name, BSON_NULL_T);
 	return new_element;
 }
 
@@ -123,7 +117,7 @@ bs_element_t	*BSON::handle_int64(char_vec_t bson_data, int& current_index, bson_
 
 	this->interpret_cstring(&p_name, bson_data, current_index);
 	p_int64 = reinterpret_cast<int64_t *>(DATA_PTR(current_index));
-	new_element = new BSON_element(*p_int64, p_name, sizeof(int64_t), type);
+	new_element = new BSON_int64(*p_int64, p_name, sizeof(int64_t), type);
 	current_index += sizeof(int64_t);
 	return new_element;
 }
@@ -135,7 +129,7 @@ bs_element_t	*BSON::handle_boolean(char_vec_t bson_data, int& current_index) {
 
 	this->interpret_cstring(&p_name, bson_data, current_index);
 	bool_value = reinterpret_cast<unsigned char *>(DATA_PTR(current_index));
-	new_element = new BSON_element(*bool_value, p_name, BSON_BOOL_T);
+	new_element = new BSON_bool(*bool_value, p_name, BSON_BOOL_T);
 	return new_element;
 }
 
@@ -146,7 +140,7 @@ bs_element_t	*BSON::handle_int32(char_vec_t bson_data, int& current_index) {
 
 	this->interpret_cstring(&p_name, bson_data, current_index);
 	p_int32 = reinterpret_cast<int32_t *>(DATA_PTR(current_index));
-	new_element = new BSON_element(*p_int32, p_name, sizeof(int32_t), BSON_INT32_T);
+	new_element = new BSON_int32(*p_int32, p_name, sizeof(int32_t), BSON_INT32_T);
 	current_index += sizeof(int32_t);
 	return new_element;
 }
@@ -162,7 +156,7 @@ bs_element_t	*BSON::handle_regular_expression(char_vec_t bson_data, int& current
 	this->interpret_cstring(&pattern, bson_data, current_index);
 	this->interpret_cstring(&flags, bson_data, current_index);
 	elem_size = strlen(pattern) + strlen(flags) + 2;
-	new_element = new BSON_element(pattern, flags, p_name, elem_size, BSON_REGEX_T);
+	new_element = new BSON_regex(pattern, flags, p_name, elem_size, BSON_REGEX_T);
 	return new_element;
 }
 
@@ -179,7 +173,7 @@ bs_element_t	*BSON::handle_db_pointer(char_vec_t bson_data, int& current_index) 
 	for (i=0;i<12;i++) {
 		pointer[i] = bson_data[current_index + i];
 	}
-	new_element = new BSON_element(pointer_string, &pointer[0], *p_str_size, p_name, BSON_DB_POINT_T);
+	new_element = new BSON_db_pointer(pointer_string, &pointer[0], *p_str_size, p_name, BSON_DB_POINT_T);
 	current_index += i;
 	return new_element;
 }
@@ -198,7 +192,7 @@ bs_element_t	*BSON::handle_javascript_code_w_scope(char_vec_t bson_data, int& cu
 	this->interpret_string(&code_size, &js_code, bson_data, current_index);
 	doc_size = reinterpret_cast<int32_t *>(DATA_PTR(current_index));
 	co_document = this->element_dispatcher(bson_data, *doc_size, current_index);
-	new_element = new BSON_element(js_code, *code_size, co_document, *doc_size, p_name, *elem_size, BSON_JS_W_S_T);
+	new_element = new BSON_js_scoped_code(js_code, *code_size, co_document, *doc_size, p_name, *elem_size, BSON_JS_W_S_T);
 	current_index += *doc_size;
 	return new_element;
 }
@@ -210,7 +204,7 @@ bs_element_t	*BSON::handle_timestamp(char_vec_t bson_data, int& current_index) {
 
 	this->interpret_cstring(&p_name, bson_data, current_index);
 	p_timestamp = reinterpret_cast<uint64_t *>(DATA_PTR(current_index));
-	new_element = new BSON_element(*p_timestamp, p_name, sizeof(uint64_t), BSON_TIME_T);
+	new_element = new BSON_timestamp(*p_timestamp, p_name, sizeof(uint64_t), BSON_TIME_T);
 	return new_element;
 }
 
@@ -223,7 +217,7 @@ bs_element_t	*BSON::handle_decimal128(char_vec_t bson_data, int& current_index) 
 
 	this->interpret_cstring(&p_name, bson_data, current_index);
 	p_dec128 = reinterpret_cast<long double *>(DATA_PTR(current_index));
-	new_element = new BSON_element(*p_dec128, p_name, sizeof(long double), BSON_DEC128_T);
+	new_element = new BSON_dec128(*p_dec128, p_name, sizeof(long double), BSON_DEC128_T);
 	current_index += sizeof(long double);
 	return new_element;
 }
@@ -233,7 +227,7 @@ bs_element_t	*BSON::handle_key(char_vec_t bson_data, int& current_index, bson_ty
 	bs_element_t	*new_element;
 
 	this->interpret_cstring(&p_name, bson_data, current_index);
-	new_element = new BSON_element(p_name, type);
+	new_element = new BSON_key(p_name, type);
 	return new_element;
 }
 
@@ -243,15 +237,13 @@ bs_element_t	*BSON::handle_object_id(char_vec_t bson_data, int& current_index) {
 	char			*p_name;
 	int		i;
 
-	// std::cout << DATA_PTR(current_index) << std::endl;
-	this->interpret_cstring(&p_name, bson_data, current_index);
+	p_name = DATA_PTR(current_index);
+	current_index += strlen(DATA_PTR(current_index)) + 1;
 	for (i = 0; i < 12; i++) {
 		object_id[i] = bson_data[current_index + i];
-		// printf("%02x", object_id[i]);
 	}
-	new_element = new BSON_element(&object_id[0], p_name, 12, BSON_OID_T);
+	new_element = new BSON_oid(&object_id[0], p_name, BSON_OID_T);
 	current_index += i;
-	// std::cout << std::endl;
 	return new_element;
 }
 
@@ -371,7 +363,6 @@ BSON::BSON(char_vec_t bson_data, int total_size) {
 }
 
 BSON::~BSON() {
-	std::cout << "bye bye";
 }
 
 /*

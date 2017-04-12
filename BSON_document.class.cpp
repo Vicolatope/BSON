@@ -1,5 +1,3 @@
-#include "BSON_document.class.hpp"
-#include "BSON_element.class.hpp"
 #include "bson.hpp"
 
 BSON_document::BSON_document(void) {
@@ -34,14 +32,30 @@ void BSON_document::add_element_to_list(BSON_element *bs_elem) {
 }
 void BSON_document::dump_document(void) {
 	bs_list_elem_t	*tmp_elm_item;
-	bs_element_t	*tmp_elem;
 
     tmp_elm_item = this->element_list;
     while (tmp_elm_item) {
-        tmp_elm_item->element->json_dump_element();
+        tmp_elm_item->element->dump_value();
         tmp_elm_item = tmp_elm_item->next_e;
         if (tmp_elm_item) {
             std::cout << ",";
         }
     }
+}
+
+BSON_element    *BSON_document::get_element_by_name(char *name) {
+    BSON_element    *match;
+    bs_list_elem_t  *tmp_elem;
+
+    tmp_elem = this->element_list;
+    while (tmp_elem) {
+        match = tmp_elem->element;
+        if (!strcmp(match->get_name(), name)) {
+            return match;
+        } else {
+            match = 0;
+        }
+        tmp_elem = tmp_elem->next_e;
+    }
+    return NULL;
 }

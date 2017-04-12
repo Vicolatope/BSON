@@ -3,6 +3,11 @@
 
 # include <iostream>
 # include <vector>
+# include <regex>
+
+/*
+*** DEFINITION DES TYPES BSON
+*/
 
 # define BSON_DOUBLE_T 0x01
 # define BSON_STRING_T 0x02
@@ -26,11 +31,43 @@
 # define BSON_MIN_K_T 0xFF
 # define BSON_MAX_K_T 0x7F
 
-typedef unsigned char		bson_type_t;
-typedef std::vector<char> 	char_vec_t;
+typedef unsigned char		bson_type_t; //typedef pour types BSON.
+typedef std::vector<char> 	char_vec_t; //typedef pour le vecteur en parametre
+
+/*
+**  Declaration des classes
+*/
+
+class BSON_document;
+class BSON;
+class BSON_element;
+
+/*
+**  Liste representant la liste d'element qui compose un document
+*/
+
+typedef struct			s_element {
+	BSON_element		*element;
+	struct s_element	*next_e;
+}						bs_list_elem_t;
+
+/*
+**  liste representant la liste de document, qui compose une collection
+**  (un ensemble de documents)
+*/
+
+typedef struct			s_document {
+	BSON_document		*cur_doc;
+	struct s_document	*next_d;
+}						bs_document_list_t;
+
+/*
+**  INCLUDE DES classes
+*/
 
 #include "BSON.class.hpp"
-class BSON;
+#include "BSON_document.class.hpp"
+#include "BSON.class.hpp"
 
 typedef BSON_element		bs_element_t;
 typedef BSON				bs_parser_t;

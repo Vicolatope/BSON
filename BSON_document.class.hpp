@@ -14,6 +14,7 @@ class BSON_document {
         void   	add_element_to_list(BSON_element *new_elem);
         bs_list_elem_t 	*new_element_list_item(BSON_element *element);
 		void 	dump_document(void);
+		BSON_element	*get_element_by_name(char *name);
 };
 
 #endif

@@ -1,23 +1,19 @@
 #ifndef _BSON_CLASS_H_
 # define _BSON_CLASS_H_
 
-// #include "BSON_element.class.hpp"
-// #include "BSON_document.class.hpp"
 #include "bson.hpp"
-class BSON_element;
-class BSON_document;
 
 typedef BSON_element bs_element_t;
 
-typedef struct			s_element {
-	BSON_element		*element;
-	struct s_element	*next_e;
-}						bs_list_elem_t;
+/*
+***	=============== BSON ===============
 
-typedef struct			s_document {
-	BSON_document		*cur_doc;
-	struct s_document	*next_d;
-}						bs_document_list_t;
+***	classe maitresse du parser BSON, qui cree la liste de documents
+***	et instancie un BSON_element approprie.
+
+***	ATTENTION : AUCUNE GESTION D'ERREUR SUR LE BUFFER EN ENTREE,
+***	COMPORTEMENT INDEFINI SUR UN MAUVAIS FORMATTAGE.
+*/
 
 class BSON {
 	private:
