@@ -21,7 +21,7 @@ class BSON_element {
 	public:
 		~BSON_element(void);
 		virtual void	dump_value(void) = 0;
-		void 	print_name(void);
+		void 	dump_name(void);
 		char	*get_name(void);
 };
 
